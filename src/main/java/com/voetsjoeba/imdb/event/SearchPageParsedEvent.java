@@ -2,7 +2,7 @@ package com.voetsjoeba.imdb.event;
 
 import java.util.EventObject;
 
-import org.dom4j.Document;
+import org.jsoup.nodes.Document;
 
 @SuppressWarnings("serial")
 public class SearchPageParsedEvent extends EventObject {

@@ -13,7 +13,7 @@ import net.jcip.annotations.ThreadSafe;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpException;
-import org.dom4j.Document;
+import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

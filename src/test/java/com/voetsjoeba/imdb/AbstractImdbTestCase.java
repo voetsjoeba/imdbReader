@@ -10,7 +10,7 @@ import com.voetsjoeba.imdb.domain.api.BaseTitle;
  * 
  * @author Jeroen De Ridder, 2011
  */
-public abstract class ImdbTestCase extends TestCase {
+public abstract class AbstractImdbTestCase extends TestCase {
 	
 	private ImdbSearcher searcher = new ImdbSearcher();
 	

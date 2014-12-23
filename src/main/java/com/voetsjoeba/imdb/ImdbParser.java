@@ -16,17 +16,23 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathFactory;
+
 import net.jcip.annotations.ThreadSafe;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpException;
-import org.dom4j.Attribute;
-import org.dom4j.Document;
-import org.dom4j.Element;
-import org.dom4j.Node;
-import org.dom4j.Text;
+import org.jsoup.nodes.Attribute;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import us.codecraft.xsoup.Xsoup;
 
 import com.voetsjoeba.imdb.domain.LimitedTitle;
 import com.voetsjoeba.imdb.domain.StandardEpisode;
@@ -115,14 +121,14 @@ public class ImdbParser {
 	 * Helper method for {@link #parseSearchResults(Document)}; constructs a single {@link LimitedTitle} instance from a search result root node.
 	 */
 	@SuppressWarnings("unchecked")
-	protected static LimitedTitle parseSearchResult(Node matchNode) {
+	protected static LimitedTitle parseSearchResult(Element matchElem) {
 		
 		String id = null;
 		
-		Node searchResultHrefNode = matchNode.selectSingleNode("a[1]/@href");
-		if(searchResultHrefNode instanceof Attribute){
-			
-			String href = searchResultHrefNode.getText().trim();
+		Element searchResultNode = matchElem.select("a:first-of-type[href]").first();
+		if (searchResultNode != null)
+		{
+			String href = searchResultNode.attr("href").trim();
 			
 			Matcher matcher = hrefIdPattern.matcher(href);
 			if(matcher.find()){
@@ -138,43 +144,38 @@ public class ImdbParser {
 		
 		//log.debug("Found popular title node: {}", popularTitleNode.asXML());
 		
-		Node searchResultTitleNode = matchNode.selectSingleNode("a[1]/text()");
-		if(searchResultTitleNode instanceof Text){
-			String title = StringUtils.strip(searchResultTitleNode.getText().trim(), "\"");
-			searchResult.setTitle(title);
-		}
+		String title = StringUtils.strip(searchResultNode.text().trim(), "\"");
+		searchResult.setTitle(title);
 		
 		
+		String yearString = "";
+		List<String> matchElemTextNodes = HttpUtils.getNonEmptyTextNodeStrings(matchElem);
+		if (matchElemTextNodes.size() > 0)
+			yearString = matchElemTextNodes.get(0);
 		
-		Node searchResultYearNode = matchNode.selectSingleNode("text()[1]");
-		if(searchResultYearNode instanceof Text){
+		Matcher matcher = searchResultYearPattern.matcher(yearString);
+		if(matcher.find()){
+			Integer year = Integer.parseInt(matcher.group(1));
+			searchResult.setYear(year);
 			
-			String yearString = searchResultYearNode.getText().trim();
+			// use the remainder of the matched date string as extra info (e.g. TV series have an extra " (TV series)" after the year
+			int matchStart = matcher.start();
+			int matchEnd = matcher.end();
 			
-			Matcher matcher = searchResultYearPattern.matcher(yearString);
-			if(matcher.find()){
-				Integer year = Integer.parseInt(matcher.group(1));
-				searchResult.setYear(year);
-				
-				// use the remainder of the matched date string as extra info (e.g. TV series have an extra " (TV series)" after the year
-				int matchStart = matcher.start();
-				int matchEnd = matcher.end();
-				
-				String moreYearInfo = "";
-				if (matchStart > 0)                     moreYearInfo = yearString.substring(0, matchStart) + moreYearInfo;
-				if (matchEnd < yearString.length() - 1) moreYearInfo = moreYearInfo + yearString.substring(matchEnd + 1); 
-				
-				moreYearInfo = moreYearInfo.trim();
-				if (!StringUtils.isEmpty(moreYearInfo))
-					extraInfo.add(moreYearInfo);
-			}
+			String moreYearInfo = "";
+			if (matchStart > 0)                     moreYearInfo = yearString.substring(0, matchStart) + moreYearInfo;
+			if (matchEnd < yearString.length() - 1) moreYearInfo = moreYearInfo + yearString.substring(matchEnd + 1); 
+			
+			moreYearInfo = moreYearInfo.trim();
+			if (!StringUtils.isEmpty(moreYearInfo))
+				extraInfo.add(moreYearInfo);
 		}
 		
 		// not sure if this is still present -- used to contain small bits of extra info like "(TV series)", but now
 		// seems to have moved into the same text as the year string (Jan 04, 2013) 
-		List<Node> extraInfoNodes = matchNode.selectNodes("small[last()]/text()");
-		for(Node extraInfoNode : extraInfoNodes){
-			extraInfo.add(extraInfoNode.getText());
+		Elements extraInfoNodes = matchElem.select("small:last-of-type");
+		for(Element extraInfoNode : extraInfoNodes){
+			extraInfo.add(extraInfoNode.text().trim());
 		}
 		
 		if(extraInfo.size() > 0)
@@ -187,34 +188,25 @@ public class ImdbParser {
 	/**
 	 * Parses a search results page into a list of {@link BaseTitle}s.
 	 */
-	@SuppressWarnings("unchecked")
-	protected static List<LimitedTitle> parseSearchResults(Document document){
-		
+	protected static List<LimitedTitle> parseSearchResults(Document document)
+	{
 		List<LimitedTitle> matches = new LinkedList<LimitedTitle>();
 		
-		List<Node> titleListNodes = new LinkedList<Node>(); // tables containing title result rows
-		titleListNodes.add(document.selectSingleNode("//div[@id='main']//div[@class='findSection']/table[1]"));
+		List<Element> titleContainerElems = new LinkedList<Element>(); // tables containing title result rows
+		titleContainerElems.add(document.select("div#main div.findSection > table:first-of-type").first());
 		
-		for(Node titleListNode : titleListNodes){
-			
-			if(titleListNode instanceof Element){
-				
-				Element titleList = (Element) titleListNode;
-				List<Node> titleNodes = titleList.selectNodes("tr/td[2]"); // table cells containing link + year, one for each row
-				
-				for(Node titleNode : titleNodes){
-					
-					LimitedTitle limitedTitle = parseSearchResult(titleNode);
-					if(limitedTitle != null) matches.add(limitedTitle);
-					
-				}
-				
+		for(Element titleContainer : titleContainerElems)
+		{
+			Elements titleElems = titleContainer.select("tr > td:nth-child(2)"); // table cells containing link + year, one for each row
+			for(Element titleElem : titleElems)
+			{
+				LimitedTitle limitedTitle = parseSearchResult(titleElem);
+				if(limitedTitle != null)
+					matches.add(limitedTitle);
 			}
-			
 		}
 		
 		return matches;
-		
 	}
 	
 	/**
@@ -243,8 +235,8 @@ public class ImdbParser {
 		
 		// determine type (movie/series) and parse accordingly
 		
-		Node tvSeriesNode = document.selectSingleNode("//td[@id='overview-top']/div[@class='infobar']/text()");
-		boolean isTvSeries = (tvSeriesNode != null && tvSeriesNode.getText().toLowerCase().contains("series"));
+		Element tvSeriesNode = document.select("td#overview-top > div.infobar").first();
+		boolean isTvSeries = (tvSeriesNode != null && tvSeriesNode.text().toLowerCase().contains("series"));
 		
 		Title imdbTitle;
 		
@@ -257,15 +249,11 @@ public class ImdbParser {
 		}
 		
 		
-		Node thumbnailNode = document.selectSingleNode("//td[@id='img_primary']//a[1]/img[1]");
-		if(thumbnailNode instanceof Element){
-			
-			Element thumbnailElement = (Element) thumbnailNode;
-			Attribute srcAttribute = thumbnailElement.attribute("src");
-			
-			if(srcAttribute != null){
+		Element thumbnailElement = document.select("td#img_primary a:first-of-type img:first-of-type").first();
+		if(thumbnailElement != null){
+			if(thumbnailElement.hasAttr("src")){
 				
-				String thumbnailSrc = srcAttribute.getValue();
+				String thumbnailSrc = thumbnailElement.attr("src");
 				imdbTitle.setThumbnailUrl(thumbnailSrc);
 				
 				if(fetchThumbnail){
@@ -282,9 +270,7 @@ public class ImdbParser {
 					}
 					
 				}
-				
 			}
-			
 		}
 		
 		return imdbTitle;
@@ -301,10 +287,10 @@ public class ImdbParser {
 		
 		parseGenericTitleInfo(document, series);
 		
-		Node yearNode = document.selectSingleNode("//td[@id='overview-top']/h1[contains(@class,'header')]/span[2]/text()");
-		if(yearNode instanceof Text){
+		Element yearNode = document.select("td#overview-top > h1[class*=header] > span:nth-of-type(2)").first();
+		if(yearNode != null){
 			
-			String yearText = yearNode.getText();
+			String yearText = yearNode.text();
 			yearText = StringUtils.remove(yearText, "(");
 			yearText = StringUtils.remove(yearText, ")");
 			yearText = StringUtils.remove(yearText, "TV Series");
@@ -336,14 +322,14 @@ public class ImdbParser {
 			Document episodeList = HttpUtils.parsePage(episodeListHtml);
 			
 			Map<Integer, Season> seasonMap = new HashMap<Integer, Season>(); // map season numbers to Season instances
-			List<Node> seasonTitleNodes = episodeList.selectNodes("//div[@id='tn15content']/h4");
+			Elements seasonTitleNodes = episodeList.select("div#tn15content > h4");
 			
-			for (Node seasonTitleNode : seasonTitleNodes) {
+			for (Element seasonTitleNode : seasonTitleNodes) {
 				
 				Integer seasonNr  = null;
 				Integer episodeNr = null;
 				
-				String seasonEpisodeNrString = seasonTitleNode.getText();
+				String seasonEpisodeNrString = seasonTitleNode.text();
 				Matcher matcher = episodeNumberPattern.matcher(seasonEpisodeNrString);
 				if (matcher.find()) {
 					seasonNr = Integer.parseInt(matcher.group(1)); // shouldn't throw, regex matches on numeric chars only
@@ -358,21 +344,23 @@ public class ImdbParser {
 				String plot = null;
 				Calendar airDate = null;
 				
-				Node titleNode = seasonTitleNode.selectSingleNode("a[1]/text()");
-				Node airdateNode = seasonTitleNode.selectSingleNode("following-sibling::b[1]/text()");
-				Node plotNode = seasonTitleNode.selectSingleNode("following-sibling::br[1]/following-sibling::text()");
+				Element titleNode = seasonTitleNode.select("a:first-of-type").first();
+				Element airdateNode = seasonTitleNode.nextElementSibling();
+				Node plotNode = airdateNode.nextElementSibling().nextSibling();
+				//Element airdateNode = Xsoup.compile("./following-sibling::b[1]").evaluate(seasonTitleNode).getElements().first();//seasonTitleNode.select("following-sibling::b[1]").first();
+				//Element plotNode = Xsoup.compile("./following-sibling::br[1]/following-sibling").evaluate(seasonTitleNode).getElements().first();//seasonTitleNode.select("following-sibling::br[1]/following-sibling").first();
 				
-				if(titleNode instanceof Text){
-					title = StringUtils.trimToNull(titleNode.getText());
+				if(titleNode != null){
+					title = StringUtils.trimToNull(titleNode.text());
 				}
 				
-				if (plotNode instanceof Text){
-					plot = StringUtils.trimToNull(plotNode.getText());
+				if (plotNode instanceof TextNode){
+					plot = StringUtils.trimToNull(((TextNode) plotNode).text());
 				}
 				
-				if(airdateNode instanceof Text){
+				if(airdateNode != null){
 					
-					String dateText = StringUtils.trimToNull(airdateNode.getText());
+					String dateText = StringUtils.trimToNull(airdateNode.text());
 					Date parsedDate = parseEpisodeAirdate(dateText);
 					
 					if (parsedDate != null) {
@@ -440,17 +428,16 @@ public class ImdbParser {
 		
 		parseGenericTitleInfo(document, movie);
 		
-		Node yearNode = document.selectSingleNode("//td[@id='overview-top']/h1[@class='header']/span/a/text()");
-		if(yearNode instanceof Text){
-			
-			String yearText = StringUtils.trimToEmpty(yearNode.getText());
+		Element yearNode = document.select("td#overview-top > h1.header > span > a").first();
+		if(yearNode != null)
+		{
+			String yearText = StringUtils.trimToEmpty(yearNode.text());
 			
 			try {
 				movie.setYear(Integer.parseInt(yearText));
 			} catch(NumberFormatException nfex){
 				// ok np, couldn't parse the year
 			}
-			
 		}
 		
 		log.debug("\tYear: {}", movie.getYear());
@@ -469,9 +456,9 @@ public class ImdbParser {
 	@SuppressWarnings("unchecked")
 	protected static void parseGenericTitleInfo(Document document, Title imdbTitle){
 		
-		Node titleNode = document.selectSingleNode("//td[@id='overview-top']/h1[@class='header']/span[1]/text()");
-		if(titleNode instanceof Text){
-			String title = StringUtils.strip(titleNode.getText().trim(), "\"");
+		Element titleNode = document.select("td#overview-top > h1.header > span:first-of-type").first();
+		if(titleNode != null){
+			String title = StringUtils.strip(titleNode.text().trim(), "\"");
 			imdbTitle.setTitle(title);
 		}
 		
@@ -481,10 +468,10 @@ public class ImdbParser {
 		
 		// ------------------------------------------------------------------------------------
 		
-		Node ratingNode = document.selectSingleNode("//td[@id='overview-top']/div[contains(@class, 'star-box')]/div[contains(@class, 'star-box-details')]/strong[1]/span[1]/text()");
-		if(ratingNode instanceof Text){
+		Element ratingNode = document.select("td#overview-top > div[class*=star-box] > div[class*=star-box-details] > strong:first-of-type > span:first-of-type").first();
+		if(ratingNode != null){
 			
-			String ratingText = StringUtils.trimToEmpty(ratingNode.getText());
+			String ratingText = StringUtils.trimToEmpty(ratingNode.text());
 			//String ratingScore = ratingText.substring(0, ratingText.indexOf('/'));
 			try {
 				double ratingDouble = Double.parseDouble(ratingText);
@@ -500,14 +487,9 @@ public class ImdbParser {
 		// ------------------------------------------------------------------------------------
 		
 		List<String> genres = new LinkedList<String>();
-		List<Node> genreNodes = document.selectNodes("//div[@id='main']/div[contains(@class, 'article')]/div[contains(@class, 'see-more')][contains(h4,'Genres:')]/a/text()");
-		
-		for(Node genreNode : genreNodes){
-			
-			if(genreNode instanceof Text){
-				genres.add(genreNode.getText().trim());
-			}
-			
+		Elements genreNodes = document.select("div[class*=see-more]:has(h4:contains(Genres:)) > a");
+		for(Element genreNode : genreNodes){
+			genres.add(genreNode.text().trim());
 		}
 		
 		imdbTitle.setGenres(genres);
@@ -515,24 +497,27 @@ public class ImdbParser {
 		// ------------------------------------------------------------------------------------
 		
 		List<Name> stars = new LinkedList<Name>();
-		List<Node> starNodes = document.selectNodes("//td[@id='overview-top']/div[contains(@class, 'txt-block')][contains(h4, 'Stars:')]/a");
+		Elements starNodes = document.select("td#overview-top > div[class*=txt-block]:has(h4:contains(Stars:)) > a");
 		
-		for(Node starNode : starNodes){
+		for(Element starNode : starNodes){
 			
 			String id = null;
 			//String name = starNode.getText();
 			//String name = null;
 			
-			Node hrefAttribute = starNode.selectSingleNode("@href");
+			//Node hrefAttribute = starNode.selectSingleNode("@href");
 			
-			if(hrefAttribute != null){
-				id = StringUtils.removeStart(StringUtils.removeEnd(hrefAttribute.getText(), "/"), "/name/");
+			//if(hrefAttribute != null){
+			if (starNode.hasAttr("href")) {
+				id = starNode.attr("href");
+				id = StringUtils.removeStart(id, "/name/");
+				id = StringUtils.substringBefore(id, "/");
 				id = StringUtils.trimToNull(id);
 			}
 			
-			Node nameSpan = starNode.selectSingleNode("span[1]");
-			String name = nameSpan.getText().trim(); 
-					
+			Element nameSpan = starNode.select("span:first-of-type").first();
+			String name = nameSpan.text().trim(); 
+			
 			if(!StringUtils.isEmpty(name) && !StringUtils.isEmpty(id)){
 				Name star = new StandardName(id, name);
 				stars.add(star);
@@ -544,16 +529,18 @@ public class ImdbParser {
 		
 		// ------------------------------------------------------------------------------------
 		
-		Node taglineNode = document.selectSingleNode("//div[@id='maindetails_center_bottom']/div[contains(@class, 'article')]/div[contains(@class, 'txt-block')][contains(h4,'Taglines')]/text()[1]");
-		if(taglineNode instanceof Text){
-			imdbTitle.setTagline(taglineNode.getText().trim());
+		Element taglineNode = document.select("div[class*=txt-block]:has(h4:contains(Taglines))").first();
+		if(taglineNode != null){
+			List<String> nonEmptyTexts = HttpUtils.getNonEmptyTextNodeStrings(taglineNode);
+			if (nonEmptyTexts.size() > 0)
+				imdbTitle.setTagline(nonEmptyTexts.get(0));
 		}
 		
 		// ------------------------------------------------------------------------------------
 		
-		Node plotNode = document.selectSingleNode("//div[@id='maindetails_center_bottom']/div[contains(@class, 'article')]/h2[text()='Storyline']/following-sibling::p[1]/text()");
-		if(plotNode instanceof Text){
-			imdbTitle.setPlot(plotNode.getText().trim());
+		Element plotNode = document.select("div#maindetails_center_bottom > div[class*=article] > h2:matches(Storyline) + div > p").first();
+		if(plotNode != null){
+			imdbTitle.setPlot(plotNode.text().trim());
 		}
 		
 		// ------------------------------------------------------------------------------------
@@ -615,9 +602,9 @@ public class ImdbParser {
 	 */
 	protected static String getCanonicalHref(Document document){
 		
-		Node linkHrefAttributeNode = document.selectSingleNode("/html/head/link[@rel='canonical']/@href");
-		if(linkHrefAttributeNode instanceof Attribute){
-			return linkHrefAttributeNode.getText();
+		Element linkHrefAttributeNode = document.select("head > link[rel=canonical][href]").first();
+		if(linkHrefAttributeNode != null){
+			return linkHrefAttributeNode.attr("href");
 		}
 		
 		return null;
@@ -629,9 +616,9 @@ public class ImdbParser {
 	 */
 	protected static String getMetaTitleContent(Document document){
 		
-		Node metaTitleContentAttributeNode = document.selectSingleNode("/html/head/meta[@name='title']/@content");
-		if(metaTitleContentAttributeNode instanceof Attribute){
-			return metaTitleContentAttributeNode.getText();
+		Element metaTitleContentAttributeNode = document.select("head > meta[name='title'][content]").first();
+		if(metaTitleContentAttributeNode != null){
+			return metaTitleContentAttributeNode.attr("content");
 		}
 		
 		return null;
@@ -643,9 +630,9 @@ public class ImdbParser {
 	 */
 	protected static String getTitle(Document document){
 		
-		Node titleTextNode = document.selectSingleNode("/html/head/title/text()");
-		if(titleTextNode instanceof Text){
-			return titleTextNode.getText();
+		Element titleNode = document.select("head > title").first();
+		if(titleNode != null){
+			return titleNode.text();
 		}
 		
 		return null;

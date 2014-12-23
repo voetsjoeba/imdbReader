@@ -3,19 +3,20 @@ package com.voetsjoeba.imdb.util;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringReader;
-import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.imageio.ImageIO;
 
 import net.jcip.annotations.ThreadSafe;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
@@ -27,11 +28,12 @@ import org.apache.http.client.protocol.RequestAddCookies;
 import org.apache.http.client.protocol.ResponseProcessCookies;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
-import org.dom4j.Document;
-import org.dom4j.io.DOMReader;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.TextNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.tidy.Tidy;
 
 @ThreadSafe
 public class HttpUtils {
@@ -118,36 +120,8 @@ public class HttpUtils {
 	 * @param page The HTML to parse.
 	 * @param cleanUp Whether to first clean up the HTML before parsing it.
 	 */
-	public static Document parsePage(String page, boolean cleanUp){
-		
-		Tidy tidy = new Tidy();
-		tidy.setHideComments(true);
-		tidy.setTidyMark(false);
-		tidy.setDropProprietaryAttributes(true);
-		tidy.setDropFontTags(true);
-		tidy.setDropEmptyParas(true);
-		tidy.setMakeClean(true);
-		tidy.setQuoteNbsp(true);
-		tidy.setQuoteMarks(true);
-		tidy.setQuiet(true);
-		tidy.setShowWarnings(false);
-		
-		StringReader in = new StringReader(page);
-		StringWriter out = new StringWriter();
-		org.w3c.dom.Document document = tidy.parseDOM(in, out);
-		
-		DOMReader domReader = new DOMReader();
-		Document dom4jDocument = domReader.read(document);
-
-		return dom4jDocument;
-		
-	}
-	
-	/**
-	 * Delegates to {@link #parsePage(String, boolean)} with boolean value <tt>TRUE</tt> as the second argument.
-	 */
 	public static Document parsePage(String page){
-		return parsePage(page, true);
+		return Jsoup.parse(page);
 	}
 	
 	/**
@@ -173,6 +147,18 @@ public class HttpUtils {
 		catch(UnsupportedEncodingException e) {
 			throw new Error("The UTF-8 character encoding does not appear to be supported. This is required to use this application.", e); // won't happen, UTF-8 is supported
 		}
+	}
+	
+	public static List<String> getNonEmptyTextNodeStrings(Element e)
+	{
+		List<String> result = new ArrayList<String>();
+		for (TextNode textNode : e.textNodes())
+		{
+			String text = StringUtils.trimToNull(textNode.text());
+			if (text != null)
+				result.add(text);
+		}
+		return result;
 	}
 	
 }

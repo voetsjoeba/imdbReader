@@ -8,7 +8,7 @@ import com.voetsjoeba.imdb.domain.api.Title;
  * 
  * @author Jeroen
  */
-public class SearchRegressionTest extends ImdbTestCase {
+public class SearchRegressionTest extends AbstractImdbTestCase {
 	
 	/**
 	 * Californication's year used to get reported as null.

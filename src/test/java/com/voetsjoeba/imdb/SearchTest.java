@@ -15,7 +15,7 @@ import com.voetsjoeba.imdb.domain.api.Season;
 import com.voetsjoeba.imdb.domain.api.Series;
 import com.voetsjoeba.imdb.domain.api.Title;
 
-public class SearchTest extends ImdbTestCase {
+public class SearchTest extends AbstractImdbTestCase {
 	
 	@SuppressWarnings("unused")
 	private static final Logger log = LoggerFactory.getLogger(SearchTest.class);
