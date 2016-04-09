@@ -6,22 +6,25 @@ package com.voetsjoeba.imdb.exception;
  * @author Jeroen De Ridder
  */
 @SuppressWarnings("serial")
-public class UnknownIdException extends ImdbException {
-
-	public UnknownIdException() {
+public class UnknownIdException extends ImdbException
+{
+	public UnknownIdException()
+	{
 		super();
 	}
-
-	public UnknownIdException(String message, Throwable cause) {
+	
+	public UnknownIdException(String message, Throwable cause)
+	{
 		super(message, cause);
 	}
-
-	public UnknownIdException(String message) {
+	
+	public UnknownIdException(String message)
+	{
 		super(message);
 	}
-
-	public UnknownIdException(Throwable cause) {
+	
+	public UnknownIdException(Throwable cause)
+	{
 		super(cause);
 	}
-	
 }

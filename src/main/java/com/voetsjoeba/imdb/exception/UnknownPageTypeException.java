@@ -6,22 +6,25 @@ package com.voetsjoeba.imdb.exception;
  * @author Jeroen De Ridder
  */
 @SuppressWarnings("serial")
-public class UnknownPageTypeException extends ImdbException {
-
-	public UnknownPageTypeException() {
+public class UnknownPageTypeException extends ImdbException
+{
+	public UnknownPageTypeException()
+	{
 		super();
 	}
-
-	public UnknownPageTypeException(String message, Throwable cause) {
+	
+	public UnknownPageTypeException(String message, Throwable cause)
+	{
 		super(message, cause);
 	}
-
-	public UnknownPageTypeException(String message) {
+	
+	public UnknownPageTypeException(String message)
+	{
 		super(message);
 	}
-
-	public UnknownPageTypeException(Throwable cause) {
+	
+	public UnknownPageTypeException(Throwable cause)
+	{
 		super(cause);
 	}
-	
 }

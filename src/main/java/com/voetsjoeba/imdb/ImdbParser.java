@@ -16,14 +16,10 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathFactory;
-
 import net.jcip.annotations.ThreadSafe;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpException;
-import org.jsoup.nodes.Attribute;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
@@ -31,8 +27,6 @@ import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import us.codecraft.xsoup.Xsoup;
 
 import com.voetsjoeba.imdb.domain.LimitedTitle;
 import com.voetsjoeba.imdb.domain.StandardEpisode;
@@ -65,9 +59,9 @@ public class ImdbParser {
 	 * 
 	 * @author Jeroen De Ridder
 	 */
-	public enum PageType {
-		TITLE_PAGE,
-		SEARCH_RESULTS
+	public enum PageType
+	{
+		TITLE_PAGE, SEARCH_RESULTS
 	}
 	
 	// Patterns are always thread-safe; Matchers, however, are not.
@@ -78,7 +72,8 @@ public class ImdbParser {
 	// DateFormats are not thread-safe by default! Care must be taken to avoid using them concurrently from separate
 	// threads.
 	protected static final List<DateFormat> episodeDateFormats;
-	static {
+	static
+	{
 		episodeDateFormats = new ArrayList<DateFormat>();
 		episodeDateFormats.add(new SimpleDateFormat("d MMMM yyyy", Locale.US));
 		episodeDateFormats.add(new SimpleDateFormat("yyyy", Locale.US));
@@ -88,41 +83,42 @@ public class ImdbParser {
 	 * Helper method; parses an episode airdate in textual form and returns it as a Date instance, or null if the
 	 * parsing failed.
 	 */
-	protected static Date parseEpisodeAirdate(String dateText) {
-		
-		if(dateText == null || dateText.equals("????"))
+	protected static Date parseEpisodeAirdate(String dateText)
+	{
+		if (dateText == null || dateText.equals("????"))
 			return null;
 		
 		Date result = null;
-		
 		
 		// important -- DateFormats are not thread-safe, so we need to synchronize their access (especially for the 
 		// prefetcher threads. Since it's tricky to get a grasp on the locking order with these for loops, we'll 
 		// just lock on the entire list of date formats and pray parsing the dates doesn't take too long.
 		
-		synchronized(episodeDateFormats){
-			
-			for(DateFormat episodeDateFormat : episodeDateFormats){
-				try {
+		synchronized (episodeDateFormats)
+		{
+			for (DateFormat episodeDateFormat : episodeDateFormats)
+			{
+				try
+				{
 					result = episodeDateFormat.parse(dateText);
 				}
-				catch(ParseException pex) {
+				catch (ParseException pex)
+				{
 					// no go, try next one
 				}
 			}
-			
 		}
 		
-		if(result == null) log.debug("Failed to parse date: {}", dateText);
+		if (result == null)
+			log.debug("Failed to parse date: {}", dateText);
 		return result;
 	}
 	
 	/**
 	 * Helper method for {@link #parseSearchResults(Document)}; constructs a single {@link LimitedTitle} instance from a search result root node.
 	 */
-	@SuppressWarnings("unchecked")
-	protected static LimitedTitle parseSearchResult(Element matchElem) {
-		
+	protected static LimitedTitle parseSearchResult(Element matchElem)
+	{
 		String id = null;
 		
 		Element searchResultNode = matchElem.select("a:first-of-type[href]").first();
@@ -131,10 +127,10 @@ public class ImdbParser {
 			String href = searchResultNode.attr("href").trim();
 			
 			Matcher matcher = hrefIdPattern.matcher(href);
-			if(matcher.find()){
+			if (matcher.find())
+			{
 				id = matcher.group(1);
 			}
-			
 		}
 		
 		if(id == null) return null;
@@ -154,17 +150,21 @@ public class ImdbParser {
 			yearString = matchElemTextNodes.get(0);
 		
 		Matcher matcher = searchResultYearPattern.matcher(yearString);
-		if(matcher.find()){
+		if (matcher.find())
+		{
 			Integer year = Integer.parseInt(matcher.group(1));
 			searchResult.setYear(year);
 			
-			// use the remainder of the matched date string as extra info (e.g. TV series have an extra " (TV series)" after the year
+			// use the remainder of the matched date string as extra info (e.g.
+			// TV series have an extra " (TV series)" after the year
 			int matchStart = matcher.start();
 			int matchEnd = matcher.end();
 			
 			String moreYearInfo = "";
-			if (matchStart > 0)                     moreYearInfo = yearString.substring(0, matchStart) + moreYearInfo;
-			if (matchEnd < yearString.length() - 1) moreYearInfo = moreYearInfo + yearString.substring(matchEnd + 1); 
+			if (matchStart > 0)
+				moreYearInfo = yearString.substring(0, matchStart) + moreYearInfo;
+			if (matchEnd < yearString.length() - 1)
+				moreYearInfo = moreYearInfo + yearString.substring(matchEnd + 1);
 			
 			moreYearInfo = moreYearInfo.trim();
 			if (!StringUtils.isEmpty(moreYearInfo))
@@ -174,7 +174,8 @@ public class ImdbParser {
 		// not sure if this is still present -- used to contain small bits of extra info like "(TV series)", but now
 		// seems to have moved into the same text as the year string (Jan 04, 2013) 
 		Elements extraInfoNodes = matchElem.select("small:last-of-type");
-		for(Element extraInfoNode : extraInfoNodes){
+		for (Element extraInfoNode : extraInfoNodes)
+		{
 			extraInfo.add(extraInfoNode.text().trim());
 		}
 		
@@ -182,7 +183,6 @@ public class ImdbParser {
 			searchResult.setExtraInfo(extraInfo);
 		
 		return searchResult;
-		
 	}
 	
 	/**
@@ -215,23 +215,24 @@ public class ImdbParser {
 	 * @param document The document to parse.
 	 * @param fetchThumbnail Whether or not to also fetch the title's thumbnail image (if any).
 	 */
-	protected static Title parseTitlePage(Document document, boolean fetchThumbnail){
+	protected static Title parseTitlePage(Document document, boolean fetchThumbnail)
+	{
 		
 		// get title ID
-		
 		String id = null;
-		String canonicalHref = getCanonicalHref(document);
 		
-		if(canonicalHref != null){
-			
+		String canonicalHref = getCanonicalHref(document);
+		if (canonicalHref != null)
+		{
 			Matcher matcher = hrefIdPattern.matcher(canonicalHref);
-			if(matcher.find()){
+			if (matcher.find())
+			{
 				id = matcher.group(1);
 			}
-			
 		}
 		
-		if(id == null) return null;
+		if (id == null)
+			return null;
 		
 		// determine type (movie/series) and parse accordingly
 		
@@ -239,36 +240,37 @@ public class ImdbParser {
 		boolean isTvSeries = (tvSeriesNode != null && tvSeriesNode.text().toLowerCase().contains("series"));
 		
 		Title imdbTitle;
-		
-		if(isTvSeries){
+		if (isTvSeries)
+		{
 			imdbTitle = new StandardSeries(id);
 			parseSeriesInfo(document, (Series) imdbTitle);
-		} else {
+		}
+		else
+		{
 			imdbTitle = new StandardMovie(id);
 			parseMovieInfo(document, (Movie) imdbTitle);
 		}
 		
-		
 		Element thumbnailElement = document.select("td#img_primary a:first-of-type img:first-of-type").first();
-		if(thumbnailElement != null){
-			if(thumbnailElement.hasAttr("src")){
-				
-				String thumbnailSrc = thumbnailElement.attr("src");
-				imdbTitle.setThumbnailUrl(thumbnailSrc);
-				
-				if(fetchThumbnail){
-					
-					try {
-						BufferedImage image = HttpUtils.fetchImage(thumbnailSrc);
-						imdbTitle.setThumbnail(image);
-					}
-					catch(IOException e) {
-						log.error(e.getMessage());
-					}
-					catch(HttpException e) {
-						log.error(e.getMessage());
-					}
-					
+		if (thumbnailElement != null && thumbnailElement.hasAttr("src"))
+		{
+			String thumbnailSrc = thumbnailElement.attr("src");
+			imdbTitle.setThumbnailUrl(thumbnailSrc);
+			
+			if (fetchThumbnail)
+			{
+				try
+				{
+					BufferedImage image = HttpUtils.fetchImage(thumbnailSrc);
+					imdbTitle.setThumbnail(image);
+				}
+				catch (IOException e)
+				{
+					log.error(e.getMessage());
+				}
+				catch (HttpException e)
+				{
+					log.error(e.getMessage());
 				}
 			}
 		}
@@ -280,7 +282,6 @@ public class ImdbParser {
 	/**
 	 * Parses information that is specific to series from the given {@link Document} title page and writes it to the provided {@link Series}.
 	 */
-	@SuppressWarnings("unchecked")
 	protected static void parseSeriesInfo(Document document, Series series){
 		
 		// parse seasons and episodes
@@ -288,23 +289,26 @@ public class ImdbParser {
 		parseGenericTitleInfo(document, series);
 		
 		Element yearNode = document.select("td#overview-top > h1[class*=header] > span:nth-of-type(2)").first();
-		if(yearNode != null){
-			
+		if (yearNode != null)
+		{
 			String yearText = yearNode.text();
 			yearText = StringUtils.remove(yearText, "(");
 			yearText = StringUtils.remove(yearText, ")");
 			yearText = StringUtils.remove(yearText, "TV Series");
 			yearText = yearText.trim();
 			
-			if (yearText.length() >= 4){
+			if (yearText.length() >= 4)
+			{
 				yearText = yearText.substring(0, 4);
-				try {
+				try
+				{
 					series.setYear(Integer.parseInt(yearText));
-				} catch(NumberFormatException nfex){
+				}
+				catch (NumberFormatException nfex)
+				{
 					// ok np, couldn't parse the year
 				}
 			}
-			
 		}
 		
 		log.debug("\tYear: {}", series.getYear());
@@ -424,18 +428,21 @@ public class ImdbParser {
 	/**
 	 * Parses information that is specific to movies from the given {@link Document} title page and writes it to the provided {@link Movie}.
 	 */
-	protected static void parseMovieInfo(Document document, Movie movie){
-		
+	protected static void parseMovieInfo(Document document, Movie movie)
+	{
 		parseGenericTitleInfo(document, movie);
 		
 		Element yearNode = document.select("td#overview-top > h1.header > span > a").first();
-		if(yearNode != null)
+		if (yearNode != null)
 		{
 			String yearText = StringUtils.trimToEmpty(yearNode.text());
 			
-			try {
+			try
+			{
 				movie.setYear(Integer.parseInt(yearText));
-			} catch(NumberFormatException nfex){
+			}
+			catch (NumberFormatException nfex)
+			{
 				// ok np, couldn't parse the year
 			}
 		}
@@ -443,7 +450,6 @@ public class ImdbParser {
 		log.debug("\tYear: {}", movie.getYear());
 		
 		// TODO: more stuff about movies to parse here
-		
 	}
 	
 	/**
@@ -453,11 +459,11 @@ public class ImdbParser {
 	 * @param document The document to parse the information from
 	 * @param imdbTitle The {@link Title} to write the parsed information to
 	 */
-	@SuppressWarnings("unchecked")
-	protected static void parseGenericTitleInfo(Document document, Title imdbTitle){
-		
+	protected static void parseGenericTitleInfo(Document document, Title imdbTitle)
+	{
 		Element titleNode = document.select("td#overview-top > h1.header > span:first-of-type").first();
-		if(titleNode != null){
+		if (titleNode != null)
+		{
 			String title = StringUtils.strip(titleNode.text().trim(), "\"");
 			imdbTitle.setTitle(title);
 		}
@@ -469,26 +475,24 @@ public class ImdbParser {
 		// ------------------------------------------------------------------------------------
 		
 		Element ratingNode = document.select("td#overview-top > div[class*=star-box] > div[class*=star-box-details] > strong:first-of-type > span:first-of-type").first();
-		if(ratingNode != null){
-			
+		if (ratingNode != null)
+		{
 			String ratingText = StringUtils.trimToEmpty(ratingNode.text());
-			//String ratingScore = ratingText.substring(0, ratingText.indexOf('/'));
-			try {
+			try
+			{
 				double ratingDouble = Double.parseDouble(ratingText);
-				Integer rating = Integer.valueOf(Double.valueOf(Math.floor(ratingDouble*10)).intValue());
+				Integer rating = Integer.valueOf(Double.valueOf(Math.floor(ratingDouble * 10)).intValue());
 				imdbTitle.setRating(rating);
 			}
-			catch(NumberFormatException nfex){
-				
-			}
-			
+			catch (NumberFormatException nfex) { }
 		}
 		
 		// ------------------------------------------------------------------------------------
 		
 		List<String> genres = new LinkedList<String>();
 		Elements genreNodes = document.select("div[class*=see-more]:has(h4:contains(Genres:)) > a");
-		for(Element genreNode : genreNodes){
+		for (Element genreNode : genreNodes)
+		{
 			genres.add(genreNode.text().trim());
 		}
 		
@@ -499,16 +503,11 @@ public class ImdbParser {
 		List<Name> stars = new LinkedList<Name>();
 		Elements starNodes = document.select("td#overview-top > div[class*=txt-block]:has(h4:contains(Stars:)) > a");
 		
-		for(Element starNode : starNodes){
-			
+		for (Element starNode : starNodes)
+		{
 			String id = null;
-			//String name = starNode.getText();
-			//String name = null;
-			
-			//Node hrefAttribute = starNode.selectSingleNode("@href");
-			
-			//if(hrefAttribute != null){
-			if (starNode.hasAttr("href")) {
+			if (starNode.hasAttr("href"))
+			{
 				id = starNode.attr("href");
 				id = StringUtils.removeStart(id, "/name/");
 				id = StringUtils.substringBefore(id, "/");
@@ -518,11 +517,11 @@ public class ImdbParser {
 			Element nameSpan = starNode.select("span:first-of-type").first();
 			String name = nameSpan.text().trim(); 
 			
-			if(!StringUtils.isEmpty(name) && !StringUtils.isEmpty(id)){
+			if (!StringUtils.isEmpty(name) && !StringUtils.isEmpty(id))
+			{
 				Name star = new StandardName(id, name);
 				stars.add(star);
 			}
-			
 		}
 		
 		imdbTitle.setStars(stars);
@@ -530,7 +529,8 @@ public class ImdbParser {
 		// ------------------------------------------------------------------------------------
 		
 		Element taglineNode = document.select("div[class*=txt-block]:has(h4:contains(Taglines))").first();
-		if(taglineNode != null){
+		if (taglineNode != null)
+		{
 			List<String> nonEmptyTexts = HttpUtils.getNonEmptyTextNodeStrings(taglineNode);
 			if (nonEmptyTexts.size() > 0)
 				imdbTitle.setTagline(nonEmptyTexts.get(0));
@@ -539,7 +539,8 @@ public class ImdbParser {
 		// ------------------------------------------------------------------------------------
 		
 		Element plotNode = document.select("div#maindetails_center_bottom > div[class*=article] > h2:matches(Storyline) + div > p").first();
-		if(plotNode != null){
+		if (plotNode != null)
+		{
 			imdbTitle.setPlot(plotNode.text().trim());
 		}
 		
@@ -554,30 +555,29 @@ public class ImdbParser {
 		log.debug("\tStars: {}", imdbTitle.getStars());
 		log.debug("\tTagline: {}", imdbTitle.getTagline());
 		log.debug("\tPlot: {}", imdbTitle.getPlot());
-		
 	}
 	
 	/**
 	 * Returns the IMDb page type of the provided document, or null if it could not be determined.
 	 */
-	protected static PageType determinePageType(Document document){
-		
+	protected static PageType determinePageType(Document document)
+	{
 		/*
 		 * First, try to determine the page type based on the <link rel="canonical" href="..." /> tag.
 		 * For title pages, the tag will look like <link rel="canonical" href="http://www.imdb.com/title/tt1127180/" />,
 		 * for search results, the tag will look like <link rel="canonical" href="http://www.imdb.com/find?s=all&q=something" />.
 		 */
-		
 		String canonicalHref = getCanonicalHref(document);
-		
-		if(canonicalHref != null){
-			
-			if(canonicalHref.indexOf("/title/") > -1){
+		if(canonicalHref != null)
+		{
+			if (canonicalHref.indexOf("/title/") > -1)
+			{
 				return PageType.TITLE_PAGE;
-			} else if(canonicalHref.indexOf("/find") > -1){
+			}
+			else if (canonicalHref.indexOf("/find") > -1)
+			{
 				return PageType.SEARCH_RESULTS;
 			}
-			
 		}
 		
 		// no go with the canonical href element, try by checking for <meta name="title" content="IMDb Search">
@@ -585,58 +585,61 @@ public class ImdbParser {
 		String title = getTitle(document);
 		String metaTitleContent = getMetaTitleContent(document);
 		
-		if(metaTitleContent != null){
-			if(metaTitleContent.indexOf("IMDb Search") >= 0) return PageType.SEARCH_RESULTS;
+		if (metaTitleContent != null)
+		{
+			if (metaTitleContent.indexOf("IMDb Search") >= 0)
+				return PageType.SEARCH_RESULTS;
 		}
 		
-		if(title != null){
-			if(title.indexOf("IMDb Search") >= 0) return PageType.SEARCH_RESULTS;
+		if (title != null)
+		{
+			if (title.indexOf("IMDb Search") >= 0)
+				return PageType.SEARCH_RESULTS;
 		}
 		
 		return null;
-		
 	}
 	
 	/**
 	 * Returns the string value of the href-attribute of the &lt;link rel="canonical" href="..." /&gt; tag, or null if no such value exists.
 	 */
-	protected static String getCanonicalHref(Document document){
-		
+	protected static String getCanonicalHref(Document document)
+	{
 		Element linkHrefAttributeNode = document.select("head > link[rel=canonical][href]").first();
-		if(linkHrefAttributeNode != null){
+		if (linkHrefAttributeNode != null)
+		{
 			return linkHrefAttributeNode.attr("href");
 		}
 		
 		return null;
-		
 	}
 	
 	/**
 	 * Returns the string value of the content attribute of the &lt;meta name="title" /&gt; tag, or null if no such value exists. 
 	 */
-	protected static String getMetaTitleContent(Document document){
-		
+	protected static String getMetaTitleContent(Document document)
+	{
 		Element metaTitleContentAttributeNode = document.select("head > meta[name='title'][content]").first();
-		if(metaTitleContentAttributeNode != null){
+		if (metaTitleContentAttributeNode != null)
+		{
 			return metaTitleContentAttributeNode.attr("content");
 		}
 		
 		return null;
-		
 	}
 	
 	/**
 	 * Returns the string value of the HTML &lt;title&gt;&lt;/title&gt; tag, or null if no such value exists.
 	 */
-	protected static String getTitle(Document document){
-		
+	protected static String getTitle(Document document)
+	{
 		Element titleNode = document.select("head > title").first();
-		if(titleNode != null){
+		if (titleNode != null)
+		{
 			return titleNode.text();
 		}
 		
 		return null;
-		
 	}
 	
 }

@@ -21,70 +21,64 @@ public class StandardSeries extends AbstractTitle implements Series {
 	/**
 	 * Creates a new Series with the specified id.
 	 */
-	public StandardSeries(String id) {
+	public StandardSeries(String id)
+	{
 		this(id, null);
 	}
 	
 	/**
 	 * Creates a new Series with the specified id and title.
 	 */
-	public StandardSeries(String id, String title){
+	public StandardSeries(String id, String title)
+	{
 		super(id);
 		setTitle(title);
 	}
 	
-	public List<Season> getSeasons() {
+	public List<Season> getSeasons()
+	{
 		return seasons;
 	}
 	
-	public void setSeasons(List<Season> seasons) {
+	public void setSeasons(List<Season> seasons)
+	{
 		this.seasons = seasons;
 	}
 	
-	public boolean hasSeason(int number){
-		//return ((number - 1) >= 0 && (number - 1) < seasons.size());
-		
-		// TODO: this is inefficient, but we'll allow it since the amount of seasons in an IMDb title is usually very low
+	public boolean hasSeason(int number)
+	{
+		// TODO: this is inefficient, but we'll allow it since the amount of
+		// seasons in an IMDb title is usually very low
 		return (getSeason(number) != null);
-		
 	}
 	
-	public Season getSeason(int number){
-		
-		// TODO: this is inefficient, but we'll allow it since the amount of seasons in an IMDb title is usually very low
-		for(Season season : seasons){
-			if(season.getNumber() == number) return season;
+	public Season getSeason(int number)
+	{
+		// TODO: this is inefficient, but we'll allow it since the amount of
+		// seasons in an IMDb title is usually very low
+		for (Season season : seasons)
+		{
+			if (season.getNumber() == number)
+				return season;
 		}
 		
 		return null;
-		
 	}
 	
-	public boolean hasSeasonEpisode(SeasonEpisodeNumber seNumber){
-		
-		/*if(hasSeason(seNumber.getSeasonNumber())){
-			Season season = getSeason(seNumber.getSeasonNumber());
-			return season.hasEpisode(seNumber.getEpisodeNumber());
-		}*/
-		
+	public boolean hasSeasonEpisode(SeasonEpisodeNumber seNumber)
+	{
 		Season season = getSeason(seNumber.getSeasonNumber());
-		/*if(season != null){
-			return season.hasEpisode(seNumber.getEpisodeNumber());
-		}
-		
-		return false;*/
-		
 		return (season != null && season.hasEpisode(seNumber.getEpisodeNumber()));
-		
 	}
 	
 	@Override
-	public String toString(){
-		return title + (year != null ? " (TV series, "+year.toString()+")" : "");
+	public String toString()
+	{
+		return title + (year != null ? " (TV series, " + year.toString() + ")" : "");
 	}
 	
-	public String getTypeString() {
+	public String getTypeString()
+	{
 		return "TV Series";
 	}
-	
 }

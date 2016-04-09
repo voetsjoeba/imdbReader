@@ -8,8 +8,8 @@ import java.util.EventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ListenerUtils {
-	
+public class ListenerUtils
+{
 	private static final Logger log = LoggerFactory.getLogger(ListenerUtils.class);
 	
 	/**
@@ -25,10 +25,14 @@ public class ListenerUtils {
 	 * @l the listener that threw the exception. May be null if unknown (for example when delegating to
 	 *    PropertyChangeSupport and the like)
 	 */
-	public static void handleListenerException(RuntimeException rex, EventListener l){
-		if(l != null){
+	public static void handleListenerException(RuntimeException rex, EventListener l)
+	{
+		if (l != null)
+		{
 			log.error("A listener threw a RuntimeException; this should not happen. See DEBUG logs for full exception details.", l);
-		} else{
+		}
+		else
+		{
 			log.error("Listener \"{}\" threw a RuntimeException; this should not happen. See DEBUG logs for full exception details.", l);
 		}
 		log.debug(rex.getMessage(), rex);
@@ -37,11 +41,11 @@ public class ListenerUtils {
 	/**
 	 * Returns the stack trace of a Throwable, exactly as it would be printed to stderr.
 	 */
-	public String getStackTrace(Throwable aThrowable) {
+	public String getStackTrace(Throwable aThrowable)
+	{
 		final Writer result = new StringWriter();
 		final PrintWriter printWriter = new PrintWriter(result);
 		aThrowable.printStackTrace(printWriter);
 		return result.toString();
 	}
-	
 }

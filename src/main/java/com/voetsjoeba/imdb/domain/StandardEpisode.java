@@ -11,8 +11,8 @@ import com.voetsjoeba.imdb.domain.api.Season;
  * 
  * @author Jeroen De Ridder
  */
-public class StandardEpisode extends AbstractEpisode implements Serializable {
-	
+public class StandardEpisode extends AbstractEpisode implements Serializable
+{
 	private static final long serialVersionUID = 1;
 	protected Season season;
 	
@@ -21,54 +21,65 @@ public class StandardEpisode extends AbstractEpisode implements Serializable {
 	protected Calendar airDate;
 	protected String plot;
 	
-	public StandardEpisode(Season season){
+	public StandardEpisode(Season season)
+	{
 		this.season = season;
 	}
 	
-	public StandardEpisode(Season season, int number, String title){
+	public StandardEpisode(Season season, int number, String title)
+	{
 		this(season);
 		this.number = number;
 		this.title = title;
 	}
 	
-	public int getNumber() {
+	public int getNumber()
+	{
 		return number;
 	}
 	
-	public void setNumber(int number) {
+	public void setNumber(int number)
+	{
 		this.number = number;
 	}
 	
-	public String getTitle() {
+	public String getTitle()
+	{
 		return title;
 	}
 	
-	public void setTitle(String name) {
+	public void setTitle(String name)
+	{
 		this.title = name;
 	}
 	
-	public Calendar getAirDate() {
+	public Calendar getAirDate()
+	{
 		return airDate;
 	}
 	
-	public void setAirDate(Calendar airDate) {
+	public void setAirDate(Calendar airDate)
+	{
 		this.airDate = airDate;
 	}
 	
-	public String getPlot() {
+	public String getPlot()
+	{
 		return plot;
 	}
 	
-	public void setPlot(String plot) {
+	public void setPlot(String plot)
+	{
 		this.plot = plot;
 	}
 	
-	public Season getSeason() {
+	public Season getSeason()
+	{
 		return season;
 	}
-
-	public void setSeason(Season season) {
+	
+	public void setSeason(Season season)
+	{
 		this.season = season;
 	}
-	
 }

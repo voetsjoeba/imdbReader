@@ -16,44 +16,49 @@ import com.voetsjoeba.imdb.util.HttpUtils;
  */
 @ThreadSafe
 @Immutable
-public class StandardName implements Name {
-	
+public class StandardName implements Name
+{
 	@SuppressWarnings("unused")
 	private static final Logger log = LoggerFactory.getLogger(StandardName.class);
 	
 	protected final String id;
 	protected final String name;
 	
-	public StandardName(String id, String name) {
+	public StandardName(String id, String name)
+	{
 		this.id = id;
 		this.name = name;
 	}
 	
-	public String getId() {
+	public String getId()
+	{
 		return id;
 	}
 	
-	public String getName() {
+	public String getName()
+	{
 		return name;
 	}
 	
 	@Override
-	public String toString() {
+	public String toString()
+	{
 		return name;
 	}
 
-	public String getUrl() {
-		
-		if(id == null){
+	public String getUrl()
+	{
+		if (id == null)
+		{
 			
-			// no ID known for this person, make it a link to the search page for their name
+			// no ID known for this person, make it a link to the search page
+			// for their name
 			return "http://www.imdb.com/find?s=all&q=" + HttpUtils.urlEncodeUtf8(name);
-			
-		} else {
+		}
+		else
+		{
 			// ID known, link directly to this person's page
 			return "http://www.imdb.com/name/" + id;
 		}
-		
 	}
-	
 }

@@ -40,14 +40,15 @@ import com.voetsjoeba.imdb.util.ListenerUtils;
 public class ImdbSearcher {
 	
 	private static final Logger log = LoggerFactory.getLogger(ImdbSearcher.class);
-	
 	private EventListenerList listeners;
 	
-	public ImdbSearcher(){
+	public ImdbSearcher()
+	{
 		listeners = new EventListenerList();
 	}
 	
-	public void addSearchListener(SearchListener l){
+	public void addSearchListener(SearchListener l)
+	{
 		listeners.add(SearchListener.class, l);
 	}
 	
@@ -62,15 +63,17 @@ public class ImdbSearcher {
 	 * @throws HttpException if the required IMDb page could not be fetched
 	 * @see ImdbSearchResults
 	 */
-	public ImdbSearchResults search(Searchable searchable, boolean fetchThumbnail) throws IOException, HttpException {
-		
-		if(searchable == null) return null;
+	public ImdbSearchResults search(Searchable searchable, boolean fetchThumbnail) throws IOException, HttpException
+	{
+		if (searchable == null)
+			return null;
 		
 		String query = StringUtils.trimToNull(searchable.getSearchTerm());
-		if(query == null) return null;
+		if (query == null)
+			return null;
 		
-		try {
-			
+		try
+		{
 			String imdbPageHtml = HttpUtils.getPage(getSearchURL(query));
 			fireSearchPageFetched(new SearchPageFetchedEvent(this, imdbPageHtml));
 			
@@ -81,38 +84,39 @@ public class ImdbSearcher {
 			PageType imdbPageType = ImdbParser.determinePageType(imdbPage);
 			fireSearchPageTypeDetermined(new SearchPageTypeDeterminedEvent(this, imdbPageType));
 			
-			if (imdbPageType == null) {
+			if (imdbPageType == null)
+			{
 				log.error("Could not determine page type of search results for '{}'", searchable.getSearchTerm());
 				return null;
 			}
 			
-			switch(imdbPageType){
-				
+			switch (imdbPageType)
+			{
 				case SEARCH_RESULTS:
 					resultList.addAll(ImdbParser.parseSearchResults(imdbPage));
 					break;
-					
+				
 				case TITLE_PAGE:
 					Title imdbTitle = ImdbParser.parseTitlePage(imdbPage, fetchThumbnail);
-					if(imdbTitle != null) resultList.add(imdbTitle);
+					if (imdbTitle != null)
+						resultList.add(imdbTitle);
 					break;
-					
+				
 				default:
 					throw new UnknownPageTypeException("Encountered unknown page type for query \"" + query + "\"");
-					
 			}
 			
 			ImdbSearchResults results = new ImdbSearchResults(resultList);
 			return results;
-			
 		}
-		catch(MalformedURLException muex){
+		catch (MalformedURLException muex)
+		{
 			throw new ImdbException(muex); // shouldn't happen
 		}
-		catch(UnsupportedEncodingException ueex) {
+		catch (UnsupportedEncodingException ueex)
+		{
 			throw new ImdbException(ueex); // shouldn't happen
 		}
-		
 	}
 	
 	/**

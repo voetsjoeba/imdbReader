@@ -36,8 +36,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @ThreadSafe
-public class HttpUtils {
-	
+public class HttpUtils
+{
 	private static final Logger log = LoggerFactory.getLogger(HttpUtils.class);
 	
 	private static final Set<String> imageContentTypes = Collections.synchronizedSet(new HashSet<String>(Arrays.asList("image/jpg", "image/jpeg", "image/png", "image/gif")));
@@ -47,10 +47,12 @@ public class HttpUtils {
 	 * 
 	 * @param url the URL to fetch. Must not be null.
 	 */
-	public static BufferedImage fetchImage(String url) throws IOException, HttpException {
-		
-		if(url == null) throw new IllegalArgumentException("URL argument must not be null");
-		if(!url.startsWith("http://")) url = "http://" + url; // throws a weird "Target host must not be null" exception if used without starting "http://" 
+	public static BufferedImage fetchImage(String url) throws IOException, HttpException
+	{
+		if(url == null)
+			throw new IllegalArgumentException("URL argument must not be null");
+		if(!url.startsWith("http://"))
+			url = "http://" + url; // throws a weird "Target host must not be null" exception if used without starting "http://" 
 		
 		BufferedImage result = null;
 		HttpClient httpClient = getNoCookiesHttpClient();
@@ -59,7 +61,8 @@ public class HttpUtils {
 		HttpResponse response = httpClient.execute(request);
 		
 		StatusLine responseStatusLine = response.getStatusLine();
-		if(responseStatusLine.getStatusCode() != HttpStatus.SC_OK){
+		if (responseStatusLine.getStatusCode() != HttpStatus.SC_OK)
+		{
 			throw new HttpException("Response returned status code that is not 200 OK (returned: " + responseStatusLine.getStatusCode() + " " + responseStatusLine.getReasonPhrase() + ")");
 		}
 		
@@ -68,19 +71,13 @@ public class HttpUtils {
 		
 		log.debug("Image fetch request " + url + " returned result of MIME type " + responseContentType);
 		
-		/*synchronized(imageContentTypes){ // probably not necessary, but let's play it safe anyway
-			if(!imageContentTypes.contains(responseContentType.toLowerCase())){
-				throw new HttpException("Response returned unknown MIME type content (returned: " + responseContentType + ", expected: one of " + imageContentTypes + ")");
-			}
-		}*/
-		
-		if(!imageContentTypes.contains(responseContentType.toLowerCase())) throw new HttpException("Response returned unknown MIME type content (returned: " + responseContentType + ", expected: one of " + imageContentTypes + ")");
-			
+		if (!imageContentTypes.contains(responseContentType.toLowerCase()))
+			throw new HttpException("Response returned unknown MIME type content (returned: " + responseContentType + ", expected: one of " + imageContentTypes + ")");
+
 		InputStream imageStream = responseContent.getContent();
 		result = ImageIO.read(imageStream);
 		
 		return result;
-		
 	}
 	
 	/**
@@ -88,10 +85,12 @@ public class HttpUtils {
 	 * 
 	 * @param url The URL of the page to fetch.
 	 */
-	public static String getPage(String url) throws IOException, HttpException {
-		
-		if(url == null) throw new IllegalArgumentException("URL argument must not be null");
-		if(!url.startsWith("http://")) url = "http://" + url; // throws a weird "Target host must not be null" exception if used without starting "http://"
+	public static String getPage(String url) throws IOException, HttpException
+	{
+		if(url == null)
+			throw new IllegalArgumentException("URL argument must not be null");
+		if(!url.startsWith("http://"))
+			url = "http://" + url; // throws a weird "Target host must not be null" exception if used without starting "http://"
 		
 		// create new default http client and disable cookies
 		HttpClient httpClient = getNoCookiesHttpClient();
@@ -101,7 +100,8 @@ public class HttpUtils {
 		
 		// make sure we got a 200 OK response
 		StatusLine responseStatusLine = response.getStatusLine();
-		if(responseStatusLine.getStatusCode() != HttpStatus.SC_OK){
+		if (responseStatusLine.getStatusCode() != HttpStatus.SC_OK)
+		{
 			throw new HttpException("Response returned status code that is not 200 OK (returned: " + responseStatusLine.getStatusCode() + " " + responseStatusLine.getReasonPhrase() + ")");
 		}
 		
@@ -112,7 +112,6 @@ public class HttpUtils {
 		
 		responseContent.consumeContent();
 		return responseString;
-		
 	}
 	
 	/**
@@ -120,31 +119,34 @@ public class HttpUtils {
 	 * @param page The HTML to parse.
 	 * @param cleanUp Whether to first clean up the HTML before parsing it.
 	 */
-	public static Document parsePage(String page){
+	public static Document parsePage(String page)
+	{
 		return Jsoup.parse(page);
 	}
 	
 	/**
 	 * Creates and returns an HttpClient instance that does not bother with cookies.
 	 */
-	public static HttpClient getNoCookiesHttpClient(){
-		
+	public static HttpClient getNoCookiesHttpClient()
+	{
 		DefaultHttpClient httpClient = new DefaultHttpClient();
 		httpClient.removeRequestInterceptorByClass(RequestAddCookies.class);
 		httpClient.removeResponseInterceptorByClass(ResponseProcessCookies.class);
 		return httpClient;
-		
 	}
 	
 	/**
 	 * Exception-safe UTF-8 URLEncoder call. Stops you from having to deal with annoying UnsupportedEncodingExceptions
 	 * that will never occur anyway because UTF-8 is supported everywhere.
 	 */
-	public static String urlEncodeUtf8(String str){
-		try {
+	public static String urlEncodeUtf8(String str)
+	{
+		try
+		{
 			return URLEncoder.encode(str, "UTF-8");
 		}
-		catch(UnsupportedEncodingException e) {
+		catch(UnsupportedEncodingException e)
+		{
 			throw new Error("The UTF-8 character encoding does not appear to be supported. This is required to use this application.", e); // won't happen, UTF-8 is supported
 		}
 	}

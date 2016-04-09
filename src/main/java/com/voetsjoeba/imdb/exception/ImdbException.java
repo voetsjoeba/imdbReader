@@ -6,22 +6,25 @@ package com.voetsjoeba.imdb.exception;
  * @author Jeroen De Ridder
  */
 @SuppressWarnings("serial")
-public class ImdbException extends RuntimeException {
-
-	public ImdbException() {
+public class ImdbException extends RuntimeException
+{
+	public ImdbException()
+	{
 		super();
 	}
-
-	public ImdbException(String message, Throwable cause) {
+	
+	public ImdbException(String message, Throwable cause)
+	{
 		super(message, cause);
 	}
-
-	public ImdbException(String message) {
+	
+	public ImdbException(String message)
+	{
 		super(message);
 	}
-
-	public ImdbException(Throwable cause) {
+	
+	public ImdbException(Throwable cause)
+	{
 		super(cause);
 	}
-	
 }

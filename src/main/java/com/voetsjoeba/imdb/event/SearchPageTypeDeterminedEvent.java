@@ -10,17 +10,18 @@ import com.voetsjoeba.imdb.ImdbParser.PageType;
  * @author Jeroen
  */
 @SuppressWarnings("serial")
-public class SearchPageTypeDeterminedEvent extends EventObject {
-	
+public class SearchPageTypeDeterminedEvent extends EventObject
+{
 	private PageType imdbPageType;
 	
-	public SearchPageTypeDeterminedEvent(Object source, PageType imdbPageType) {
+	public SearchPageTypeDeterminedEvent(Object source, PageType imdbPageType)
+	{
 		super(source);
 		this.imdbPageType = imdbPageType;
 	}
 	
-	public PageType getImdbPageType() {
+	public PageType getImdbPageType()
+	{
 		return imdbPageType;
 	}
-	
 }

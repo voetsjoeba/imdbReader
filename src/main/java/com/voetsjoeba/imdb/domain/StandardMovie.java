@@ -7,16 +7,17 @@ import com.voetsjoeba.imdb.domain.api.Movie;
  * 
  * @author Jeroen De Ridder
  */
-public class StandardMovie extends AbstractTitle implements Movie {
-	
+public class StandardMovie extends AbstractTitle implements Movie
+{
 	private static final long serialVersionUID = 1L;
 	
-	public StandardMovie(String id) {
+	public StandardMovie(String id)
+	{
 		super(id);
 	}
 	
-	public String getTypeString() {
+	public String getTypeString()
+	{
 		return "Movie";
 	}
-	
 }

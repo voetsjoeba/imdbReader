@@ -15,22 +15,25 @@ import com.voetsjoeba.imdb.exception.NoExactMatchException;
  * 
  * @author Jeroen De Ridder
  */
-public class ImdbSearchResults {
-	
+public class ImdbSearchResults
+{
 	private List<BaseTitle> matches;
 	
-	public ImdbSearchResults(){
+	public ImdbSearchResults()
+	{
 		matches = new LinkedList<BaseTitle>();
 	}
 	
-	public ImdbSearchResults(List<BaseTitle> matches){
+	public ImdbSearchResults(List<BaseTitle> matches)
+	{
 		this.matches = matches;
 	}
 	
 	/**
 	 * Creates an ImdbSearchResults instance for an exact match.
 	 */
-	public ImdbSearchResults(Title exactMatch){
+	public ImdbSearchResults(Title exactMatch)
+	{
 		this(); // invoke default constructor
 		matches.add(exactMatch);
 	}
@@ -40,7 +43,8 @@ public class ImdbSearchResults {
 	 * Otherwise, the list will contain {@link LimitedTitle}s only. You may check for this using the {@link #isExactMatch()} method.
 	 * @see #isExactMatch()
 	 */
-	public List<BaseTitle> getMatches(){
+	public List<BaseTitle> getMatches()
+	{
 		return matches;
 	}
 	
@@ -50,7 +54,8 @@ public class ImdbSearchResults {
 	 * only a single match.
 	 * @see #getMatches()
 	 */
-	public boolean isExactMatch(){
+	public boolean isExactMatch()
+	{
 		return (matches.size() == 1 && matches.get(0) instanceof Title);
 	}
 	
@@ -62,9 +67,10 @@ public class ImdbSearchResults {
 	 * @throws NoExactMatchException if these results do not hold an exact match
 	 * @return the exact result (if any)
 	 */
-	public Title getExactMatch(){
-		if(!isExactMatch()) throw new NoExactMatchException();
+	public Title getExactMatch()
+	{
+		if (!isExactMatch())
+			throw new NoExactMatchException();
 		return (Title) matches.get(0);
 	}
-	
 }
